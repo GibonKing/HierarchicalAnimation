@@ -1,4 +1,1 @@
-﻿  Aeroplane.cpp
-f:\thirdyear\rt3d\hierarchicalanimation\hierarchicalanimation\hierarchy\aeroplane.cpp(64): warning C4101: 'mForwardMatrix': unreferenced local variable
-f:\thirdyear\rt3d\hierarchicalanimation\hierarchicalanimation\hierarchy\aeroplane.cpp(64): warning C4101: 'mPlaneCameraRot': unreferenced local variable
-  Hierarchy.vcxproj -> F:\ThirdYear\RT3D\HierarchicalAnimation\HierarchicalAnimation\Debug\Hierarchy.exe
+﻿  Hierarchy.vcxproj -> C:\Users\Dave\OneDrive\Documents\David\University\Course\Third Year\RT3D\Week3\HierarchicalAnimation\HierarchicalAnimation\Debug\Hierarchy.exe
