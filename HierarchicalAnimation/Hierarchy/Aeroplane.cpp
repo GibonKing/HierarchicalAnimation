@@ -61,7 +61,7 @@ void Aeroplane::SetWorldPosition(float fX, float fY, float fZ)
 void Aeroplane::UpdateMatrices(void)
 {
 	XMMATRIX mRotX, mRotY, mRotZ, mTrans;
-	XMMATRIX mPlaneCameraRot, mForwardMatrix;
+	XMMATRIX mPlaneCameraRot, mPlaneGunRot, mPlaneTurretRot, mForwardMatrix;
 
 	// [START HERE]
 
@@ -69,48 +69,70 @@ void Aeroplane::UpdateMatrices(void)
 	// i.e. Use XMMatrixRotationX(), XMMatrixRotationY(), XMMatrixRotationZ() and XMMatrixTranslationFromVector to calculate mRotX, mRotY, mRotZ and mTrans from m_v4Rot
 	// Then concatenate the matrices to calculate m_mWorldMatrix
 
-	mRotX = XMMatrixRotationX(m_v4Rot.x);
-	mRotY = XMMatrixRotationY(m_v4Rot.y);
-	mRotZ = XMMatrixRotationZ(m_v4Rot.z);
+	mRotX = XMMatrixRotationX(XMConvertToRadians(m_v4Rot.x));
+	mRotY = XMMatrixRotationY(XMConvertToRadians(m_v4Rot.y));
+	mRotZ = XMMatrixRotationZ(XMConvertToRadians(m_v4Rot.z));
 	mTrans = XMMatrixTranslationFromVector(XMLoadFloat4(&m_v4Pos));
-	m_mWorldMatrix = mRotX * mRotY * mRotZ * mTrans;
+	m_mWorldMatrix = mRotZ * mRotX * mRotY * mTrans;
 
 	// [Skip this step first time through] Also calculate mPlaneCameraRot which ignores rotations in Z and X for the camera to parent to
 
+	mPlaneCameraRot = mRotY * mTrans;
+
 	// [Skip this step first time through] Get the forward vector out of the world matrix and put it in m_vForwardVector
+
+	m_vForwardVector = m_mWorldMatrix.r[2];
 
 	// Calculate m_mPropWorldMatrix for propeller based on Euler rotation angles and position data.
 	// Parent the propeller to the plane
 
-	mRotX = XMMatrixRotationX(m_v4PropRot.x);
-	mRotY = XMMatrixRotationY(m_v4PropRot.y);
-	mRotZ = XMMatrixRotationZ(m_v4PropRot.z);
+	mRotX = XMMatrixRotationX(XMConvertToRadians(m_v4PropRot.x));
+	mRotY = XMMatrixRotationY(XMConvertToRadians(m_v4PropRot.y));
+	mRotZ = XMMatrixRotationZ(XMConvertToRadians(m_v4PropRot.z));
 	mTrans = XMMatrixTranslationFromVector(XMLoadFloat4(&m_v4PropOff));
-	m_mPropWorldMatrix = mRotX * mRotY * mRotZ * mTrans * m_mWorldMatrix;
+	m_mPropWorldMatrix = mRotZ * mRotX * mRotY * mTrans * m_mWorldMatrix;
 
 	// Calculate m_mTurretWorldMatrix for propeller based on Euler rotation angles and position data.
 	// Parent the turret to the plane
 
-	mRotX = XMMatrixRotationX(m_v4TurretRot.x);
-	mRotY = XMMatrixRotationY(m_v4TurretRot.y);
-	mRotZ = XMMatrixRotationZ(m_v4TurretRot.z);
+	mRotX = XMMatrixRotationX(XMConvertToRadians(m_v4TurretRot.x));
+	mRotY = XMMatrixRotationY(XMConvertToRadians(m_v4TurretRot.y));
+	mRotZ = XMMatrixRotationZ(XMConvertToRadians(m_v4TurretRot.z));
 	mTrans = XMMatrixTranslationFromVector(XMLoadFloat4(&m_v4TurretOff));
-	m_mTurretWorldMatrix = mRotX * mRotY * mRotZ * mTrans * m_mWorldMatrix;
+	m_mTurretWorldMatrix = mRotZ * mRotX * mRotY * mTrans * m_mWorldMatrix;
+	mPlaneTurretRot = mRotY * mTrans * mPlaneCameraRot;
 
 	// Calculate m_mGunWorldMatrix for gun based on Euler rotation angles and position data.
 	// Parent the gun to the turret
 
-	mRotX = XMMatrixRotationX(m_v4GunRot.x);
-	mRotY = XMMatrixRotationY(m_v4GunRot.y);
-	mRotZ = XMMatrixRotationZ(m_v4GunRot.z);
+	mRotX = XMMatrixRotationX(XMConvertToRadians(m_v4GunRot.x));
+	mRotY = XMMatrixRotationY(XMConvertToRadians(m_v4GunRot.y));
+	mRotZ = XMMatrixRotationZ(XMConvertToRadians(m_v4GunRot.z));
 	mTrans = XMMatrixTranslationFromVector(XMLoadFloat4(&m_v4GunOff));
-	m_mGunWorldMatrix = mRotX * mRotY * mRotZ * mTrans * m_mTurretWorldMatrix;
+	m_mGunWorldMatrix = mRotZ * mRotX * mRotY * mTrans * m_mTurretWorldMatrix;
+	mPlaneGunRot = mRotY * mTrans * mPlaneTurretRot;
 
 	// Calculate m_mCameraWorldMatrix for camera based on Euler rotation angles and position data.
+	
+	mRotX = XMMatrixRotationX(XMConvertToRadians(m_v4CamRot.x));
+	mRotY = XMMatrixRotationY(XMConvertToRadians(m_v4CamRot.y));
+	mRotZ = XMMatrixRotationZ(XMConvertToRadians(m_v4CamRot.z));
+	mTrans = XMMatrixTranslationFromVector(XMLoadFloat4(&m_v4CamOff));
+	m_mCamWorldMatrix = mRotZ * mRotX * mRotY * mTrans;
 
 	// [Skip this step first time through] Switch between parenting the camera to the plane (without X and Z rotations) and the gun based on m_bGunCam
 
+	if (m_bGunCam) {
+		m_mCamWorldMatrix = m_mCamWorldMatrix * mPlaneGunRot;
+	}
+	else {
+		m_mCamWorldMatrix = m_mCamWorldMatrix * mPlaneCameraRot;
+	}
+
 	// Get the camera's world position (m_vCamWorldPos) out of m_mCameraWorldMatrix
+
+	m_vCamWorldPos = m_mCamWorldMatrix.r[3];
+
 }
 
 void Aeroplane::Update(bool bPlayerControl)
@@ -121,15 +143,47 @@ void Aeroplane::Update(bool bPlayerControl)
 		// Step 1: Make the plane pitch upwards when you press "Q" and return to level when released
 		// Maximum pitch = 60 degrees
 
+		if (Application::s_pApp->IsKeyPressed('Q') && m_v4Rot.x < 60) {
+			m_v4Rot.x += 1.f;
+		}
+		else if (m_v4Rot.x > 0) {
+			m_v4Rot.x -= 1.f;
+		}
+
 		// Step 2: Make the plane pitch downwards when you press "A" and return to level when released
 		// You can also impose a take off speed of 0.5 if you like
 		// Minimum pitch = -60 degrees
 
+		if (Application::s_pApp->IsKeyPressed('A') && m_v4Rot.x > -60) {
+			m_v4Rot.x -= 1.f;
+		}
+		else if (m_v4Rot.x < 0) {
+			m_v4Rot.x += 1.f;
+		}
+
 		// Step 3: Make the plane yaw and roll left when you press "O" and return to level when released
 		// Maximum roll = 20 degrees
 
+		if (Application::s_pApp->IsKeyPressed('O')) {
+			if(m_v4Rot.z < 20)
+				m_v4Rot.z += 1.f;
+			m_v4Rot.y -= 1.f;
+		}
+		else if (m_v4Rot.z > 0) {
+			m_v4Rot.z -= 1.f;
+		}
+
 		// Step 4: Make the plane yaw and roll right when you press "P" and return to level when released
 		// Minimum roll = -20 degrees
+
+		if (Application::s_pApp->IsKeyPressed('P')) {
+			if (m_v4Rot.z > -20)
+				m_v4Rot.z -= 1.f;
+			m_v4Rot.y += 1.f;
+		}
+		else if (m_v4Rot.z < 0) {
+			m_v4Rot.z += 1.f;
+		}
 
 	} // End of if player control
 
